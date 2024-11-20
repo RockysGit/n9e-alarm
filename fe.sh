@@ -19,9 +19,3 @@ fi
 GOPATH=$(go env GOPATH)
 GOPATH=${GOPATH:-/home/runner/go}
 
-# Embed files into a go binary
-# go install github.com/rakyll/statik
-if ! $GOPATH/bin/statik -src=./pub -dest=./front; then
-    echo "failed to embed files into a go binary!"
-    exit 4
-fi

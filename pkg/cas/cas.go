@@ -4,6 +4,9 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
+	"encoding/xml"
+	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strings"
@@ -52,6 +55,22 @@ type SsoClient struct {
 	CoverAttributes bool
 	HTTPClient      *http.Client
 	sync.RWMutex
+}
+
+const (
+	CasValidateUrl = "https://cas.erp.sina.com.cn/cas/validate?ticket=%s&service=%s&codetype=utf8"
+)
+
+type CasUserXml struct {
+	XMLName        xml.Name `xml:"user"`
+	Uid            string   `xml:"info>uid"`      // 姓名
+	Name           string   `xml:"info>name"`     // 姓名
+	UserName       string   `xml:"info>username"` // 工号
+	Email          string   `xml:"info>email"`
+	FullEmail      string   `xml:"info>fullemail"`
+	Organization   string   `xml:"info>organization"`
+	Organizationt3 string   `xml:"info>organizationt3"`
+	Telephone      string   `xml:"info>telephone"`
 }
 
 func New(cf Config) *SsoClient {
@@ -224,18 +243,36 @@ func (s *SsoClient) ValidateServiceTicket(ctx context.Context, ticket, state str
 		resOptions.Client = s.HTTPClient
 	}
 
-	resCli := cas.NewRestClient(resOptions)
-	authRet, err := resCli.ValidateServiceTicket(cas.ServiceTicket(ticket))
+	queryTicket := string(cas.ServiceTicket(ticket))
+	queryService := sanitisedURL(resOptions.ServiceURL)
+	url := fmt.Sprintf(CasValidateUrl, queryTicket, queryService)
+	response, err := http.Get(url)
 	if err != nil {
-		logger.Errorf("Ticket Validating Failed: %s", err)
-		return
+		msg := "request cas validate fail."
+		logger.Error(msg+" %v", err)
 	}
-	ret = &CallbackOutput{}
+	defer response.Body.Close()
 
-	ret.Username = authRet.User
-	ret.Nickname = authRet.Attributes.Get(s.Attributes.Nickname)
-	ret.Email = authRet.Attributes.Get(s.Attributes.Email)
-	ret.Phone = authRet.Attributes.Get(s.Attributes.Phone)
+	body, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		msg := "read response from cas validate fail."
+		logger.Error(msg+" %v", err)
+	}
+
+	var casUser CasUserXml
+	xmlErr := xml.Unmarshal(body, &casUser)
+	if xmlErr != nil {
+		msg := "parse response from cas validate fail."
+		logger.Error(msg+" %v", err)
+	}
+
+	logger.Info("CasUserXml.UserName:", casUser.UserName)
+	logger.Info("CasUserXml.ProjectName:", casUser.Name)
+	ret = &CallbackOutput{}
+	ret.Username = casUser.Email
+	ret.Nickname = casUser.Name
+	ret.Email = casUser.FullEmail
+	ret.Phone = casUser.Telephone
 
 	ret.Redirect, err = fetchRedirect(ctx, state, redis)
 	if err != nil {
@@ -246,4 +283,21 @@ func (s *SsoClient) ValidateServiceTicket(ctx context.Context, ticket, state str
 		logger.Debugf("delete redirect err:%s state:%s", state, err)
 	}
 	return
+}
+
+var (
+	urlCleanParameters = []string{"gateway", "renew", "service", "ticket"}
+)
+
+func sanitisedURL(unclean *url.URL) *url.URL {
+	// Shouldn't be any errors parsing an existing *url.URL
+	u, _ := url.Parse(unclean.String())
+	q := u.Query()
+
+	for _, param := range urlCleanParameters {
+		q.Del(param)
+	}
+
+	u.RawQuery = q.Encode()
+	return u
 }

@@ -19,7 +19,7 @@ Output = "stdout"
 # http listening address
 Host = "0.0.0.0"
 # http listening port
-Port = 17000
+Port = 8080
 # https cert file path
 CertFile = ""
 # https key file path
@@ -42,15 +42,15 @@ WriteTimeout = 40
 IdleTimeout = 120
 
 [HTTP.ShowCaptcha]
-Enable = false 
+Enable = false
 
 [HTTP.APIForAgent]
-Enable = true 
+Enable = true
 # [HTTP.APIForAgent.BasicAuth]
 # user001 = "ccc26da7b9aba533cbb263a36c07dcc5"
 
 [HTTP.APIForService]
-Enable = true 
+Enable = true
 [HTTP.APIForService.BasicAuth]
 user001 = "ccc26da7b9aba533cbb263a36c07dcc5"
 
@@ -76,7 +76,7 @@ OpenRSA = false
 # postgres: host=%s port=%s user=%s dbname=%s password=%s sslmode=%s
 # postgres: DSN="host=127.0.0.1 port=5432 user=root dbname=n9e_v6 password=1234 sslmode=disable"
 # sqlite: DSN="/path/to/filename.db"
-DSN = "root:1234@tcp(127.0.0.1:3306)/n9e_v6?charset=utf8mb4&parseTime=True&loc=Local&allowNativePasswords=true"
+DSN = "root:mysqlroot@tcp(127.0.0.1:7777)/n9e_v6?charset=utf8mb4&parseTime=True&loc=Local&allowNativePasswords=true"
 # enable debug mode or not
 Debug = false
 # mysql postgres sqlite
@@ -92,9 +92,9 @@ MaxIdleConns = 50
 
 [Redis]
 # address, ip:port or ip1:port,ip2:port for cluster and sentinel(SentinelAddrs)
-Address = "127.0.0.1:6379"
-# Username = ""
-# Password = ""
+Address = "127.0.0.1:7778"
+Username = "default"
+Password = "redis6379"
 # DB = 0
 # UseTLS = false
 # TLSMinVersion = "1.2"
@@ -139,7 +139,7 @@ ForceUseServerTS = true
 # QueueMaxSize = 1000000
 # QueuePopSize = 1000
 
-[[Pushgw.Writers]] 
+[[Pushgw.Writers]]
 # Url = "http://127.0.0.1:8480/insert/0/prometheus/api/v1/write"
 Url = "http://127.0.0.1:9090/api/v1/write"
 # Basic auth username
