@@ -49,6 +49,7 @@ type Router struct {
 	TargetCache       *memsto.TargetCacheType
 	Sso               *sso.SsoClient
 	UserCache         *memsto.UserCacheType
+	UserRolesCache    *memsto.UserRolesCache
 	UserGroupCache    *memsto.UserGroupCacheType
 	Ctx               *ctx.Context
 	HeartbeatHook     HeartbeatHookFunc
@@ -59,7 +60,7 @@ func New(httpConfig httpx.Config, center cconf.Center, alert aconf.Alert, ibex c
 	operations cconf.Operation, ds *memsto.DatasourceCacheType, ncc *memsto.NotifyConfigCacheType,
 	pc *prom.PromClientMap, tdendgineClients *tdengine.TdengineClientMap, redis storage.Redis,
 	sso *sso.SsoClient, ctx *ctx.Context, metaSet *metas.Set, idents *idents.Set,
-	tc *memsto.TargetCacheType, uc *memsto.UserCacheType, ugc *memsto.UserGroupCacheType) *Router {
+	tc *memsto.TargetCacheType, uc *memsto.UserCacheType, ugc *memsto.UserGroupCacheType, urc *memsto.UserRolesCache) *Router {
 	return &Router{
 		HTTP:              httpConfig,
 		Center:            center,
@@ -76,6 +77,7 @@ func New(httpConfig httpx.Config, center cconf.Center, alert aconf.Alert, ibex c
 		TargetCache:       tc,
 		Sso:               sso,
 		UserCache:         uc,
+		UserRolesCache:    urc,
 		UserGroupCache:    ugc,
 		Ctx:               ctx,
 		HeartbeatHook:     func(ident string) map[string]interface{} { return nil },
@@ -270,6 +272,9 @@ func (rt *Router) Config(r *gin.Engine) {
 		pages.DELETE("/user-group/:id", rt.auth(), rt.user(), rt.perm("/user-groups/del"), rt.userGroupWrite(), rt.userGroupDel)
 		pages.POST("/user-group/:id/members", rt.auth(), rt.user(), rt.perm("/user-groups/put"), rt.userGroupWrite(), rt.userGroupMemberAdd)
 		pages.DELETE("/user-group/:id/members", rt.auth(), rt.user(), rt.perm("/user-groups/put"), rt.userGroupWrite(), rt.userGroupMemberDel)
+
+		// 用户权限缓存
+		pages.POST("/user-roles-cache", rt.userRolesCache)
 
 		pages.GET("/busi-groups", rt.auth(), rt.user(), rt.busiGroupGets)
 		pages.POST("/busi-groups", rt.auth(), rt.user(), rt.perm("/busi-groups/add"), rt.busiGroupAdd)

@@ -1,13 +1,13 @@
 package router
 
 import (
-	"net/http"
-	"strings"
-
+	"encoding/json"
 	"github.com/ccfos/nightingale/v6/models"
 	"github.com/ccfos/nightingale/v6/pkg/flashduty"
 	"github.com/ccfos/nightingale/v6/pkg/ormx"
 	"github.com/ccfos/nightingale/v6/pkg/secu"
+	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/toolkits/pkg/ginx"
@@ -219,4 +219,23 @@ func (rt *Router) userDel(c *gin.Context) {
 	}
 
 	ginx.NewRender(c).Message(target.Del(rt.Ctx))
+}
+
+type UserRolesForm struct {
+	Username string `json:"username"`
+	Roles    string `json:"roles"`
+}
+
+func (rt *Router) userRolesCache(c *gin.Context) {
+	var u UserRolesForm
+	ginx.BindJSON(c, &u)
+	var rolesMap map[string]map[string][]string
+	json.Unmarshal([]byte(u.Roles), &rolesMap)
+	for _, systemMap := range rolesMap {
+		roles := []string{}
+		for space, _ := range systemMap {
+			roles = append(roles, space)
+		}
+		rt.UserRolesCache.Set(u.Username, roles)
+	}
 }

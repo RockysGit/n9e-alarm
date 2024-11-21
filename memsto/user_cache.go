@@ -248,3 +248,54 @@ func (uc *UserCacheType) UpdateUsersLastActiveTime() error {
 
 	return nil
 }
+
+type UserRolesCache struct {
+	sync.RWMutex
+	roleMap map[string][]string
+	ctx     *ctx.Context
+}
+
+func NewUserRolesCache(ctx *ctx.Context) *UserRolesCache {
+	return &UserRolesCache{
+		roleMap: make(map[string][]string),
+		ctx:     ctx,
+	}
+}
+
+// UserRolesCache实现方法SyncUserRoles
+func (urc *UserRolesCache) SyncUserRoles(ctx *ctx.Context, username string) error {
+	urc.Lock()
+	defer urc.Unlock()
+
+	user, err := models.UserGetByUsername(ctx, username)
+	if err != nil {
+		return errors.WithMessage(err, "failed to query user")
+	}
+
+	if user == nil {
+		return errors.New("Username not exists")
+	}
+	//添加用户组
+	if roles, ok := urc.roleMap[username]; ok {
+		ugs, err := models.UserGroupGetByNames(ctx, roles)
+		if err != nil {
+			return err
+		}
+		for _, ug := range ugs {
+			err = models.UserGroupMemberAdd(ctx, ug.Id, user.Id)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// UserRolesCache实现方法Set
+func (urc *UserRolesCache) Set(username string, roles []string) {
+	urc.Lock()
+	defer urc.Unlock()
+	if _, ok := urc.roleMap[username]; !ok {
+		urc.roleMap[username] = roles
+	}
+}

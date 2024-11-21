@@ -354,6 +354,8 @@ func (rt *Router) loginCallbackCas(c *gin.Context) {
 		user.FullSsoFields("cas", ret.Username, ret.Nickname, ret.Phone, ret.Email, rt.Sso.CAS.DefaultRoles)
 		// create user from cas
 		ginx.Dangerous(user.Add(rt.Ctx))
+		//首次登陆后，同步用户角色信息，更新用户组
+		rt.UserRolesCache.SyncUserRoles(rt.Ctx, ret.Username)
 	}
 
 	// set user login state

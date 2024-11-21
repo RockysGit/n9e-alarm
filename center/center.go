@@ -97,6 +97,7 @@ func Initialize(configDir string, cryptoKey string) (func(), error) {
 	alertRuleCache := memsto.NewAlertRuleCache(ctx, syncStats)
 	notifyConfigCache := memsto.NewNotifyConfigCache(ctx, configCache)
 	userCache := memsto.NewUserCache(ctx, syncStats)
+	userRolesCache := memsto.NewUserRolesCache(ctx)
 	userGroupCache := memsto.NewUserGroupCache(ctx, syncStats)
 	taskTplCache := memsto.NewTaskTplCache(ctx)
 	configCvalCache := memsto.NewCvalCache(ctx, syncStats)
@@ -117,7 +118,7 @@ func Initialize(configDir string, cryptoKey string) (func(), error) {
 	alertrtRouter := alertrt.New(config.HTTP, config.Alert, alertMuteCache, targetCache, busiGroupCache, alertStats, ctx, externalProcessors)
 	centerRouter := centerrt.New(config.HTTP, config.Center, config.Alert, config.Ibex,
 		cconf.Operations, dsCache, notifyConfigCache, promClients, tdengineClients,
-		redis, sso, ctx, metas, idents, targetCache, userCache, userGroupCache)
+		redis, sso, ctx, metas, idents, targetCache, userCache, userGroupCache, userRolesCache)
 	pushgwRouter := pushgwrt.New(config.HTTP, config.Pushgw, config.Alert, targetCache, busiGroupCache, idents, metas, writers, ctx)
 
 	go func() {
