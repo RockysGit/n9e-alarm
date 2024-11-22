@@ -87,7 +87,7 @@ func NewCallBacker(
 	case models.DefaultDomain: // default callback
 		return &DefaultCallBacker{}
 	case models.DingtalkDomain:
-		return &DingtalkSender{tpl: tpls[models.Dingtalk]}
+		return &DingtalkSender{tpl: tpls}
 	case models.WecomDomain:
 		return &WecomSender{tpl: tpls[models.Wecom]}
 	case models.FeishuDomain:

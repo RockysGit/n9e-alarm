@@ -49,20 +49,67 @@ func (e *Consumer) LoopConsume() {
 		e.consume(events, sema)
 	}
 }
-
 func (e *Consumer) consume(events []interface{}, sema *semaphore.Semaphore) {
+	var eventMap = make(map[string][]*models.AlertCurEvent)
+	logger.Debugf("get curEvents length form eventQueue is:%+v", len(events))
 	for i := range events {
 		if events[i] == nil {
 			continue
 		}
 
 		event := events[i].(*models.AlertCurEvent)
-		sema.Acquire()
-		go func(event *models.AlertCurEvent) {
-			defer sema.Release()
-			e.consumeOne(event)
-		}(event)
+		eventMap[event.RuleName] = append(eventMap[event.RuleName], event)
 	}
+
+	for ruleName, groupedEvents := range eventMap {
+		sema.Acquire()
+		go func(ruleName string, groupedEvents []*models.AlertCurEvent) {
+			defer sema.Release()
+			e.consumeMerge(groupedEvents)
+		}(ruleName, groupedEvents)
+	}
+}
+
+func (e *Consumer) consumeMerge(events []*models.AlertCurEvent) {
+	if len(events) == 0 {
+		return
+	}
+
+	first := events[0]
+	eventType := "alert"
+	if first.IsRecovered {
+		eventType = "recovery"
+	}
+
+	e.dispatch.Astats.CounterAlertsTotal.WithLabelValues(first.Cluster, eventType, first.GroupName).Inc()
+
+	for _, event := range events {
+		if err := event.ParseRule("rule_name"); err != nil {
+			logger.Warningf("ruleid:%d failed to parse rule name: %v", event.RuleId, err)
+			event.RuleName = fmt.Sprintf("failed to parse rule name: %v", err)
+		}
+
+		if err := event.ParseRule("annotations"); err != nil {
+			logger.Warningf("ruleid:%d failed to parse annotations: %v", event.RuleId, err)
+			event.Annotations = fmt.Sprintf("failed to parse annotations: %v", err)
+			event.AnnotationsJSON["error"] = event.Annotations
+		}
+
+		e.queryRecoveryVal(event)
+
+		if err := event.ParseRule("rule_note"); err != nil {
+			logger.Warningf("ruleid:%d failed to parse rule note: %v", event.RuleId, err)
+			event.RuleNote = fmt.Sprintf("failed to parse rule note: %v", err)
+		}
+
+		e.persist(event)
+
+		if first.IsRecovered && first.NotifyRecovered == 0 {
+			return
+		}
+	}
+
+	e.dispatch.HandleEventNotify(events, true)
 }
 
 func (e *Consumer) consumeOne(event *models.AlertCurEvent) {
@@ -99,7 +146,7 @@ func (e *Consumer) consumeOne(event *models.AlertCurEvent) {
 		return
 	}
 
-	e.dispatch.HandleEventNotify(event, false)
+	//e.dispatch.HandleEventNotify(event, false)
 }
 
 func (e *Consumer) persist(event *models.AlertCurEvent) {

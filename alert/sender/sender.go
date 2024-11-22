@@ -30,7 +30,7 @@ type (
 func NewSender(key string, tpls map[string]*template.Template, smtp ...aconf.SMTPConfig) Sender {
 	switch key {
 	case models.Dingtalk:
-		return &DingtalkSender{tpl: tpls[models.Dingtalk]}
+		return &DingtalkSender{tpl: tpls}
 	case models.Wecom:
 		return &WecomSender{tpl: tpls[models.Wecom]}
 	case models.Feishu:
@@ -64,8 +64,10 @@ func BuildMessageContext(ctx *ctx.Context, rule *models.AlertRule, events []*mod
 }
 
 type BuildTplMessageFunc func(channel string, tpl *template.Template, events []*models.AlertCurEvent) string
+type BuildTplsMessageFunc func(channel string, tpl map[string]*template.Template, events []*models.AlertCurEvent) string
 
 var BuildTplMessage BuildTplMessageFunc = buildTplMessage
+var BuildTplsMessage BuildTplsMessageFunc = buildTplsMessage
 
 func buildTplMessage(channel string, tpl *template.Template, events []*models.AlertCurEvent) string {
 	if tpl == nil {
@@ -73,7 +75,11 @@ func buildTplMessage(channel string, tpl *template.Template, events []*models.Al
 	}
 
 	var content string
-	for _, event := range events {
+	for i, event := range events {
+		if i > 0 {
+			event.RuleName = ""
+		}
+
 		var body bytes.Buffer
 		if err := tpl.Execute(&body, event); err != nil {
 			return err.Error()
@@ -82,4 +88,46 @@ func buildTplMessage(channel string, tpl *template.Template, events []*models.Al
 	}
 
 	return content
+}
+
+
+
+func buildTplsMessage(channel string, tpl map[string]*template.Template, events []*models.AlertCurEvent) string {
+	if tpl == nil {
+		return "tpl for current sender not found, please check configuration"
+	}
+
+	var content, recoverContent string
+	var header, recoverHeader = false, false
+	for _, event := range events {
+		body := bytes.Buffer{}
+		isRecovered := event.IsRecovered
+		//生成header
+		if isRecovered && !recoverHeader {
+				if err := tpl[models.Header].Execute(&body, event); err != nil {
+					return err.Error()
+				}
+				recoverContent += body.String() + "\n\n"
+				recoverHeader = true
+		} else if !header {
+			if err := tpl[models.Header].Execute(&body, event); err != nil {
+				return err.Error()
+			}
+			content += body.String() + "\n\n"
+			header = true
+		}
+		
+		body.Reset()
+		if err := tpl[models.Dingtalk].Execute(&body, event); err != nil {
+			return err.Error()
+		}
+
+		if isRecovered {
+			recoverContent += body.String() + "\n\n"
+		} else {
+			content += body.String() + "\n\n"
+		}
+	}
+
+	return content + recoverContent
 }
