@@ -292,10 +292,12 @@ func (urc *UserRolesCache) SyncUserRoles(ctx *ctx.Context, username string) erro
 }
 
 // UserRolesCache实现方法Set
-func (urc *UserRolesCache) Set(username string, roles []string) {
+func (urc *UserRolesCache) Set(username string, roles []string) error {
 	urc.Lock()
 	defer urc.Unlock()
 	if _, ok := urc.roleMap[username]; !ok {
 		urc.roleMap[username] = roles
 	}
+	logger.Debugf("RolesCache:%s -- %s", username, urc.roleMap[username])
+	return nil
 }
