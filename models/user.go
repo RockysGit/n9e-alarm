@@ -32,6 +32,7 @@ const (
 	EmailSubject = "mailsubject"
 	Lark         = "lark"
 	LarkCard     = "larkcard"
+	Header       = "header"
 
 	DingtalkKey = "dingtalk_robot_token"
 	WecomKey    = "wecom_robot_token"

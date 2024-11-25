@@ -28,7 +28,7 @@ var (
 )
 
 type DingtalkSender struct {
-	tpl *template.Template
+	tpl map[string]*template.Template
 }
 
 func (ds *DingtalkSender) Send(ctx MessageContext) {
@@ -40,7 +40,7 @@ func (ds *DingtalkSender) Send(ctx MessageContext) {
 	if len(urls) == 0 {
 		return
 	}
-	message := BuildTplMessage(models.Dingtalk, ds.tpl, ctx.Events)
+	message := BuildTplsMessage(models.Dingtalk, ds.tpl, ctx.Events)
 
 	for i, url := range urls {
 		var body dingtalk
@@ -66,7 +66,6 @@ func (ds *DingtalkSender) Send(ctx MessageContext) {
 				},
 			}
 		}
-
 		doSendAndRecord(ctx.Ctx, url, tokens[i], body, models.Dingtalk, ctx.Stats, ctx.Events)
 	}
 }
@@ -84,7 +83,7 @@ func (ds *DingtalkSender) CallBack(ctx CallBackContext) {
 	}
 
 	ats := ExtractAtsParams(ctx.CallBackURL)
-	message := BuildTplMessage(models.Dingtalk, ds.tpl, ctx.Events)
+	message := BuildTplsMessage(models.Dingtalk, ds.tpl, ctx.Events)
 
 	if len(ats) > 0 {
 		body.Markdown.Text = message + "\n@" + strings.Join(ats, "@")

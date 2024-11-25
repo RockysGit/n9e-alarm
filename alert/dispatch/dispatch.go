@@ -134,18 +134,18 @@ func (e *Dispatch) relaodTpls() error {
 // HandleEventNotify 处理event事件的主逻辑
 // event: 告警/恢复事件
 // isSubscribe: 告警事件是否由subscribe的配置产生
-func (e *Dispatch) HandleEventNotify(event *models.AlertCurEvent, isSubscribe bool) {
-	rule := e.alertRuleCache.Get(event.RuleId)
+func (e *Dispatch) HandleEventNotify(events []*models.AlertCurEvent, isSubscribe bool) {
+	rule := e.alertRuleCache.Get(events[0].RuleId)
 	if rule == nil {
 		return
 	}
 
-	if e.blockEventNotify(rule, event) {
-		logger.Infof("block event notify: rule_id:%d event:%+v", rule.Id, event)
+	if e.blockEventNotify(rule, events[0]) {
+		logger.Infof("block event notify: rule_id:%d event:%+v", rule.Id, events[0])
 		return
 	}
 
-	fillUsers(event, e.userCache, e.userGroupCache)
+	fillUsers(events[0], e.userCache, e.userGroupCache)
 
 	var (
 		// 处理事件到 notifyTarget 关系,处理的notifyTarget用OrMerge进行合并
@@ -164,20 +164,20 @@ func (e *Dispatch) HandleEventNotify(event *models.AlertCurEvent, isSubscribe bo
 	notifyTarget := NewNotifyTarget()
 	// 处理订阅关系使用OrMerge
 	for _, handler := range handlers {
-		notifyTarget.OrMerge(handler(rule, event, notifyTarget, e))
+		notifyTarget.OrMerge(handler(rule, events[0], notifyTarget, e))
 	}
 
 	// 处理移除订阅关系的逻辑,比如员工离职，临时静默某个通道的策略等
 	for _, handler := range interceptorHandlers {
-		notifyTarget.AndMerge(handler(rule, event, notifyTarget, e))
+		notifyTarget.AndMerge(handler(rule, events[0], notifyTarget, e))
 	}
 
 	// 处理事件发送,这里用一个goroutine处理一个event的所有发送事件
-	go e.Send(rule, event, notifyTarget, isSubscribe)
+	go e.Send(rule, events, notifyTarget, isSubscribe)
 
 	// 如果是不是订阅规则出现的event, 则需要处理订阅规则的event
 	if !isSubscribe {
-		e.handleSubs(event)
+		e.handleSubs(events[0])
 	}
 }
 
@@ -260,14 +260,14 @@ func (e *Dispatch) handleSub(sub *models.AlertSubscribe, event models.AlertCurEv
 	event.SubRuleId = sub.Id
 
 	LogEvent(&event, "subscribe")
-	e.HandleEventNotify(&event, true)
+	//e.HandleEventNotify(&event, true)
 }
 
-func (e *Dispatch) Send(rule *models.AlertRule, event *models.AlertCurEvent, notifyTarget *NotifyTarget, isSubscribe bool) {
-	needSend := e.BeforeSenderHook(event)
+func (e *Dispatch) Send(rule *models.AlertRule, events []*models.AlertCurEvent, notifyTarget *NotifyTarget, isSubscribe bool) {
+	needSend := e.BeforeSenderHook(events[0])
 	if needSend {
 		for channel, uids := range notifyTarget.ToChannelUserMap() {
-			msgCtx := sender.BuildMessageContext(e.ctx, rule, []*models.AlertCurEvent{event},
+			msgCtx := sender.BuildMessageContext(e.ctx, rule, events,
 				uids, e.userCache, e.Astats)
 			e.RwLock.RLock()
 			s := e.Senders[channel]
@@ -277,35 +277,35 @@ func (e *Dispatch) Send(rule *models.AlertRule, event *models.AlertCurEvent, not
 				continue
 			}
 
-			var event *models.AlertCurEvent
-			if len(msgCtx.Events) > 0 {
-				event = msgCtx.Events[0]
-			}
+			// var event *models.AlertCurEvent
+			// if len(msgCtx.Events) > 0 {
+			// 	event = msgCtx.Events[0]
+			// }
 
-			logger.Debugf("send to channel:%s event:%+v users:%+v", channel, event, msgCtx.Users)
+			logger.Debugf("send to channel:%s event:%+v users:%+v", channel, events, msgCtx.Users)
 			s.Send(msgCtx)
 		}
 	}
 
 	// handle event callbacks
-	e.SendCallbacks(rule, notifyTarget, event)
+	e.SendCallbacks(rule, notifyTarget, events[0])
 
 	// handle global webhooks
-	if !event.OverrideGlobalWebhook() {
+	if !events[0].OverrideGlobalWebhook() {
 		if e.alerting.WebhookBatchSend {
-			sender.BatchSendWebhooks(e.ctx, notifyTarget.ToWebhookList(), event, e.Astats)
+			sender.BatchSendWebhooks(e.ctx, notifyTarget.ToWebhookList(), events[0], e.Astats)
 		} else {
-			sender.SingleSendWebhooks(e.ctx, notifyTarget.ToWebhookList(), event, e.Astats)
+			sender.SingleSendWebhooks(e.ctx, notifyTarget.ToWebhookList(), events[0], e.Astats)
 		}
 	}
 
 	// handle plugin call
-	go sender.MayPluginNotify(e.ctx, e.genNoticeBytes(event), e.notifyConfigCache.
-		GetNotifyScript(), e.Astats, event)
+	go sender.MayPluginNotify(e.ctx, e.genNoticeBytes(events[0]), e.notifyConfigCache.
+		GetNotifyScript(), e.Astats, events[0])
 
 	if !isSubscribe {
 		// handle ibex callbacks
-		e.HandleIbex(rule, event)
+		e.HandleIbex(rule, events[0])
 	}
 }
 

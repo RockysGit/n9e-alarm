@@ -223,19 +223,28 @@ func (rt *Router) userDel(c *gin.Context) {
 
 type UserRolesForm struct {
 	Username string `json:"username"`
-	Roles    string `json:"roles"`
+	Roles    []*ProjectDefDto `json:"roles"`
+}
+
+type ProjectDefDto struct {
+	Namespace       string `json:"namespace"`
+	Name            string `json:"name"`
+	GitOpsProjectId string `json:"gitOpsProjectId"`
 }
 
 func (rt *Router) userRolesCache(c *gin.Context) {
 	var u UserRolesForm
 	ginx.BindJSON(c, &u)
-	var rolesMap map[string]map[string][]string
-	json.Unmarshal([]byte(u.Roles), &rolesMap)
-	for _, systemMap := range rolesMap {
-		roles := []string{}
-		for space, _ := range systemMap {
-			roles = append(roles, space)
-		}
-		rt.UserRolesCache.Set(u.Username, roles)
+	roles, err := json.Marshal(u)
+	if err != nil {
+		ginx.NewRender(c).Message(err)
+		return
 	}
+	logger.Debugf("roles: %s", roles)
+	userRoles := []string{}
+	for _, ns := range u.Roles {
+		userRoles = append(userRoles, ns.Namespace)
+	}
+	
+	ginx.NewRender(c).Message(rt.UserRolesCache.Set(u.Username, userRoles))
 }
