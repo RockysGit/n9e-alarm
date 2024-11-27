@@ -511,6 +511,8 @@ func (rt *Router) Config(r *gin.Engine) {
 			service.PUT("/user/:id", rt.userProfilePutByService)
 			service.DELETE("/user/:id", rt.userDel)
 			service.GET("/users", rt.userFindAll)
+			// 用户权限缓存
+			service.POST("/user-roles-cache", rt.userRolesCache)
 
 			service.GET("/user-groups", rt.userGroupGetsByService)
 			service.GET("/user-group-members", rt.userGroupMemberGetsByService)
