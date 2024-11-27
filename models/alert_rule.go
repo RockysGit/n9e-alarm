@@ -976,7 +976,7 @@ func AlertRuleGetsAll(ctx *ctx.Context) ([]*AlertRule, error) {
 }
 
 func AlertRulesGetsBy(ctx *ctx.Context, prods []string, query, algorithm, cluster string,
-	cates []string, disabled int) ([]*AlertRule, error) {
+	cates []string, disabled int, bgName string) ([]*AlertRule, error) {
 	session := DB(ctx)
 
 	if len(prods) > 0 {
@@ -1005,6 +1005,15 @@ func AlertRulesGetsBy(ctx *ctx.Context, prods []string, query, algorithm, cluste
 
 	if disabled != -1 {
 		session = session.Where("disabled = ?", disabled)
+	}
+
+	if bgName != "" {
+		bg, err := BusiGroupGet(ctx, "name=?", bgName)
+		if err != nil {
+			return nil, err
+		}
+		session = session.Where("group_id = ?", bg.Id)
+
 	}
 
 	var lst []*AlertRule
@@ -1205,7 +1214,7 @@ func GetTargetsOfHostAlertRule(ctx *ctx.Context, engineName string) (map[string]
 	}
 
 	m := make(map[string]map[int64][]string)
-	hostAlertRules, err := AlertRulesGetsBy(ctx, []string{"host"}, "", "", "", []string{}, 0)
+	hostAlertRules, err := AlertRulesGetsBy(ctx, []string{"host"}, "", "", "", []string{}, 0, "")
 	if err != nil {
 		return m, err
 	}

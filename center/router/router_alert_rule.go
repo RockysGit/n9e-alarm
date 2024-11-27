@@ -123,7 +123,9 @@ func (rt *Router) alertRulesGetByService(c *gin.Context) {
 	}
 
 	disabled := ginx.QueryInt(c, "disabled", -1)
-	ars, err := models.AlertRulesGetsBy(rt.Ctx, prods, query, algorithm, cluster, cates, disabled)
+
+	bgNames := ginx.QueryStr(c, "bg_name", "")
+	ars, err := models.AlertRulesGetsBy(rt.Ctx, prods, query, algorithm, cluster, cates, disabled, bgNames)
 	if err == nil {
 		cache := make(map[int64]*models.UserGroup)
 		for i := 0; i < len(ars); i++ {
