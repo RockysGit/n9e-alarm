@@ -90,8 +90,6 @@ func buildTplMessage(channel string, tpl *template.Template, events []*models.Al
 	return content
 }
 
-
-
 func buildTplsMessage(channel string, tpl map[string]*template.Template, events []*models.AlertCurEvent) string {
 	if tpl == nil {
 		return "tpl for current sender not found, please check configuration"
@@ -102,21 +100,23 @@ func buildTplsMessage(channel string, tpl map[string]*template.Template, events 
 	for _, event := range events {
 		body := bytes.Buffer{}
 		isRecovered := event.IsRecovered
-		//生成header
+		//生成recover-header
 		if isRecovered && !recoverHeader {
-				if err := tpl[models.Header].Execute(&body, event); err != nil {
-					return err.Error()
-				}
-				recoverContent += body.String() + "\n\n"
-				recoverHeader = true
-		} else if !header {
+			if err := tpl[models.Header].Execute(&body, event); err != nil {
+				return err.Error()
+			}
+			recoverContent += body.String() + "\n\n"
+			recoverHeader = true
+		}
+		//生成alarm-header
+		if !isRecovered && !header {
 			if err := tpl[models.Header].Execute(&body, event); err != nil {
 				return err.Error()
 			}
 			content += body.String() + "\n\n"
 			header = true
 		}
-		
+
 		body.Reset()
 		if err := tpl[models.Dingtalk].Execute(&body, event); err != nil {
 			return err.Error()

@@ -467,14 +467,14 @@ func (p *Processor) fireEvent(event *models.AlertCurEvent) {
 		return
 	}
 
-	logger.Debugf("rule_eval:%s event:%+v fire", p.Key(), event)
+	logger.Debugf("rule_eval:%s fire", p.Key())
 	if fired, has := p.fires.Get(event.Hash); has {
 		p.fires.UpdateLastEvalTime(event.Hash, event.LastEvalTime)
 		event.FirstTriggerTime = fired.FirstTriggerTime
 		p.HandleFireEventHook(event)
 
 		if cachedRule.NotifyRepeatStep == 0 {
-			logger.Debugf("rule_eval:%s event:%+v repeat is zero nothing to do", p.Key(), event)
+			logger.Debugf("rule_eval:%s repeat is zero nothing to do", p.Key())
 			// 说明不想重复通知，那就直接返回了，nothing to do
 			// do not need to send alert again
 			return
@@ -489,7 +489,7 @@ func (p *Processor) fireEvent(event *models.AlertCurEvent) {
 			} else {
 				// 有最大发送次数的限制，就要看已经发了几次了，是否达到了最大发送次数
 				if fired.NotifyCurNumber >= cachedRule.NotifyMaxNumber {
-					logger.Debugf("rule_eval:%s event:%+v reach max number", p.Key(), event)
+					logger.Debugf("rule_eval:%s reach max number", p.Key())
 					return
 				} else {
 					event.NotifyCurNumber = fired.NotifyCurNumber + 1
