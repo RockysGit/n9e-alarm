@@ -1154,7 +1154,6 @@ func (ar *AlertRule) UpdateEvent(event *AlertCurEvent) {
 	event.PromForDuration = ar.PromForDuration
 	event.RuleConfig = ar.RuleConfig
 	event.RuleConfigJson = ar.RuleConfigJson
-	event.PromEvalInterval = ar.PromEvalInterval
 	event.Callbacks = ar.Callbacks
 	event.CallbacksJSON = ar.CallbacksJSON
 	event.RunbookUrl = ar.RunbookUrl
