@@ -533,6 +533,7 @@ func (rt *Router) Config(r *gin.Engine) {
 			service.PUT("/alert-rule/:arid", rt.alertRulePutByService)
 			service.GET("/alert-rule/:arid", rt.alertRuleGet)
 			service.GET("/alert-rules", rt.alertRulesGetByService)
+			service.PUT("/alert-rule/fields", rt.alertRulePutFields)
 
 			service.GET("/alert-subscribes", rt.alertSubscribeGetsByService)
 

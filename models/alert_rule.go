@@ -53,6 +53,7 @@ type AlertRule struct {
 	DatasourceQueries     []DatasourceQuery      `json:"datasource_queries" gorm:"datasource_queries;type:text;serializer:json"` // datasource queries
 	Cluster               string                 `json:"cluster"`                                                                // take effect by clusters, seperated by space
 	Name                  string                 `json:"name"`                                                                   // rule name
+	AppName				string					`json:"app_name" gorm:"app_name"`
 	Note                  string                 `json:"note"`                                                                   // will sent in notify
 	Prod                  string                 `json:"prod"`                                                                   // product empty means n9e
 	Algorithm             string                 `json:"algorithm"`                                                              // algorithm (''|holtwinters), empty means threshold
@@ -1006,7 +1007,7 @@ func AlertRuleGetsAll(ctx *ctx.Context) ([]*AlertRule, error) {
 }
 
 func AlertRulesGetsBy(ctx *ctx.Context, prods []string, query, algorithm, cluster string,
-	cates []string, disabled int, bgName string) ([]*AlertRule, error) {
+	cates []string, disabled int, bgName, appName string) ([]*AlertRule, error) {
 	session := DB(ctx)
 
 	if len(prods) > 0 {
@@ -1036,14 +1037,17 @@ func AlertRulesGetsBy(ctx *ctx.Context, prods []string, query, algorithm, cluste
 	if disabled != -1 {
 		session = session.Where("disabled = ?", disabled)
 	}
-
+	//先从业务组中获取，然后过滤app_name
 	if bgName != "" {
 		bg, err := BusiGroupGet(ctx, "name=?", bgName)
 		if err != nil {
 			return nil, err
 		}
 		session = session.Where("group_id = ?", bg.Id)
+	}
 
+	if appName != "" {
+		session = session.Where("app_name = ?", appName)
 	}
 
 	var lst []*AlertRule
@@ -1244,7 +1248,7 @@ func GetTargetsOfHostAlertRule(ctx *ctx.Context, engineName string) (map[string]
 	}
 
 	m := make(map[string]map[int64][]string)
-	hostAlertRules, err := AlertRulesGetsBy(ctx, []string{"host"}, "", "", "", []string{}, 0, "")
+	hostAlertRules, err := AlertRulesGetsBy(ctx, []string{"host"}, "", "", "", []string{}, 0, "", "")
 	if err != nil {
 		return m, err
 	}

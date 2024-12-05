@@ -66,6 +66,7 @@ func (ds *DingtalkSender) Send(ctx MessageContext) {
 				},
 			}
 		}
+		//logger.Debugf("event: %s, %s", tokens[i], body)
 		doSendAndRecord(ctx.Ctx, url, tokens[i], body, models.Dingtalk, ctx.Stats, ctx.Events)
 	}
 }

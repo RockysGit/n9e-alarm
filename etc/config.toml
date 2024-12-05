@@ -19,7 +19,7 @@ Output = "stdout"
 # http listening address
 Host = "0.0.0.0"
 # http listening port
-Port = 17000
+Port = 17002
 # https cert file path
 CertFile = ""
 # https key file path
@@ -51,8 +51,8 @@ Enable = true
 
 [HTTP.APIForService]
 Enable = true
-[HTTP.APIForService.BasicAuth]
-user001 = "ccc26da7b9aba533cbb263a36c07dcc5"
+#[HTTP.APIForService.BasicAuth]
+#user001 = "ccc26da7b9aba533cbb263a36c07dcc5"
 
 [HTTP.JWTAuth]
 # unit: min
@@ -76,7 +76,7 @@ OpenRSA = false
 # postgres: host=%s port=%s user=%s dbname=%s password=%s sslmode=%s
 # postgres: DSN="host=127.0.0.1 port=5432 user=root dbname=n9e_v6 password=1234 sslmode=disable"
 # sqlite: DSN="/path/to/filename.db"
-DSN = "root:mysqlroot@tcp(10.236.63.10:7777)/n9e_v6?charset=utf8mb4&parseTime=True&loc=Local&allowNativePasswords=true"
+DSN = "root:mysqlroot@tcp(10.222.76.58:7777)/n9e_v6?charset=utf8mb4&parseTime=True&loc=Local&allowNativePasswords=true"
 # enable debug mode or not
 Debug = false
 # mysql postgres sqlite
@@ -92,7 +92,7 @@ MaxIdleConns = 50
 
 [Redis]
 # address, ip:port or ip1:port,ip2:port for cluster and sentinel(SentinelAddrs)
-Address = "10.236.63.10:7778"
+Address = "10.222.76.58:7778"
 Username = "default"
 Password = "redis6379"
 # DB = 0
@@ -119,6 +119,7 @@ EngineName = "default"
 [Center]
 MetricsYamlFile = "./etc/metrics.yaml"
 I18NHeaderKey = "X-Language"
+BuiltinIntegrationsDir = "./intergrations"
 
 [Center.AnonymousAccess]
 PromQuerier = true

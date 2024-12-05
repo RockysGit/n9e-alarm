@@ -125,7 +125,8 @@ func (rt *Router) alertRulesGetByService(c *gin.Context) {
 	disabled := ginx.QueryInt(c, "disabled", -1)
 
 	bgNames := ginx.QueryStr(c, "bg_name", "")
-	ars, err := models.AlertRulesGetsBy(rt.Ctx, prods, query, algorithm, cluster, cates, disabled, bgNames)
+	appName := ginx.QueryStr(c, "app_name", "")
+	ars, err := models.AlertRulesGetsBy(rt.Ctx, prods, query, algorithm, cluster, cates, disabled, bgNames, appName)
 	if err == nil {
 		cache := make(map[int64]*models.UserGroup)
 		for i := 0; i < len(ars); i++ {
@@ -348,8 +349,10 @@ func (rt *Router) alertRulePutFields(c *gin.Context) {
 	if len(f.Fields) == 0 {
 		ginx.Bomb(http.StatusBadRequest, "fields empty")
 	}
-
-	f.Fields["update_by"] = c.MustGet("username").(string)
+	
+	if c.FullPath() != "/v1/n9e/alert-rule/fields" {
+		f.Fields["update_by"] = c.MustGet("username").(string)
+	}
 	f.Fields["update_at"] = time.Now().Unix()
 
 	for i := 0; i < len(f.Ids); i++ {
