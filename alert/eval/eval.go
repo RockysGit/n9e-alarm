@@ -240,10 +240,8 @@ func (arw *AlertRuleWorker) GetPromAnomalyPoint(ruleConfig string) ([]models.Ano
 		readerClient := arw.PromClients.GetCli(arw.DatasourceId)
 
 		if query.VarEnabled {
-			anomalyPoints := arw.VarFilling(query, readerClient)
-			for _, v := range anomalyPoints {
-				lst = append(lst, v)
-			}
+			anomalyPoints := arw.VarReplace(query, readerClient)
+			lst = append(lst, anomalyPoints...)
 		} else {
 			// 无变量
 			promql := strings.TrimSpace(query.PromQl)
@@ -396,6 +394,78 @@ func (arw *AlertRuleWorker) VarFilling(query models.PromQuery, readerClient prom
 	}
 
 	return anomalyPoints
+}
+
+
+
+func (arw *AlertRuleWorker) VarReplace(query models.PromQuery, readerClient promsdk.API) []models.AnomalyPoint {
+	fullQuery := query.PromQl
+	var lst []models.AnomalyPoint
+	// 统一变量配置格式
+	VarConfigForCalc := &models.ChildVarConfig{
+		ParamVal:        make([]map[string]models.ParamQuery, 1),
+		ChildVarConfigs: query.VarConfig.ChildVarConfigs,
+	}
+	VarConfigForCalc.ParamVal[0] = make(map[string]models.ParamQuery)
+	for _, p := range query.VarConfig.ParamVal {
+		VarConfigForCalc.ParamVal[0][p.Name] = models.ParamQuery{
+			ParamType: p.ParamType,
+			Query:     p.Query,
+		}
+	}
+	
+	// 遍历变量配置链表
+	curNode := VarConfigForCalc
+	for curNode != nil {
+		for _, param := range curNode.ParamVal {
+			// curQuery 当前节点的无参数 query，用于时序库查询
+			curQuery := fullQuery
+			// 取出阈值变量
+			valMap := make(map[string]string)
+			for val, valQuery := range param {
+				if valQuery.ParamType == "threshold" {
+					q, _ := json.Marshal(valQuery.Query)
+					var query []string
+					err := json.Unmarshal(q, &query)
+					if err != nil {
+						logger.Errorf("query:%s fail to unmarshalling into string slice, error:%v", valQuery.Query, err)
+					}
+					valMap[val] = strings.Join(query, ",")
+				}
+			}
+			// 替换值变量
+			for key, val := range valMap {
+				curQuery = strings.Replace(curQuery, fmt.Sprintf("$%s", key), val, -1)
+			}
+			// 得到满足值变量的所有结果
+			value, warnings, err := readerClient.Query(context.Background(), curQuery, time.Now())
+			if err != nil {
+				logger.Errorf("rule_eval:%s, promql:%s, error:%v", arw.Key(), curQuery, err)
+				continue
+			}
+			
+			if len(warnings) > 0 {
+				logger.Errorf("rule_eval:%s promql:%s, warnings:%v", arw.Key(), curQuery, warnings)
+				arw.Processor.Stats.CounterQueryDataErrorTotal.WithLabelValues(fmt.Sprintf("%d", arw.DatasourceId)).Inc()
+				arw.Processor.Stats.CounterRuleEvalErrorTotal.WithLabelValues(fmt.Sprintf("%v", arw.Processor.DatasourceId()), QUERY_DATA, arw.Processor.BusiGroupCache.GetNameByBusiGroupId(arw.Rule.GroupId), fmt.Sprintf("%v", arw.Rule.Id)).Inc()
+			}
+
+			logger.Debugf("remove var rule_eval:%s query:%+v, value:%v", arw.Key(), curQuery, value)
+			points := models.ConvertAnomalyPoints(value)
+			for i := 0; i < len(points); i++ {
+				points[i].Severity = query.Severity
+				points[i].Query = curQuery
+				points[i].ValuesUnit = map[string]unit.FormattedValue{
+					"v": unit.ValueFormatter(query.Unit, 2, points[i].Value),
+				}
+			}
+
+			lst = append(lst, points...)
+		}
+		curNode = curNode.ChildVarConfigs
+	}
+
+	return lst
 }
 
 // getSamples 获取查询结果的所有样本，并转化为统一的格式
