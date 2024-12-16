@@ -293,9 +293,9 @@ func (e *Dispatch) Send(rule *models.AlertRule, events []*models.AlertCurEvent, 
 	// handle global webhooks
 	if !events[0].OverrideGlobalWebhook() {
 		if e.alerting.WebhookBatchSend {
-			sender.BatchSendWebhooks(e.ctx, notifyTarget.ToWebhookList(), events[0], e.Astats)
+			sender.BatchSendWebhooks(e.ctx, notifyTarget.ToWebhookMap(), events[0], e.Astats)
 		} else {
-			sender.SingleSendWebhooks(e.ctx, notifyTarget.ToWebhookList(), events[0], e.Astats)
+			sender.SingleSendWebhooks(e.ctx, notifyTarget.ToWebhookMap(), events[0], e.Astats)
 		}
 	}
 

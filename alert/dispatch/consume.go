@@ -64,6 +64,7 @@ func (e *Consumer) LoopConsume() {
 		e.consume(events, sema)
 	}
 }
+
 func (e *Consumer) consume(events []interface{}, sema *semaphore.Semaphore) {
 	var eventMap = make(map[string][]*models.AlertCurEvent)
 	logger.Debugf("get curEvents length form eventQueue is:%+v", len(events))

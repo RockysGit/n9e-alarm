@@ -1265,7 +1265,13 @@ func (arw *AlertRuleWorker) VarFillingBeforeQuery(query models.PromQuery, reader
 			valMap := make(map[string]string)
 			for val, valQuery := range param {
 				if valQuery.ParamType == "threshold" {
-					valMap[val] = getString(valQuery.Query)
+					q, _ := json.Marshal(valQuery.Query)
+					var query []string
+					err := json.Unmarshal(q, &query)
+					if err != nil {
+						logger.Errorf("query:%s fail to unmarshalling into string slice, error:%v", valQuery.Query, err)
+					}
+					valMap[val] = strings.Join(query, ",")
 				}
 			}
 			// 替换阈值变量
